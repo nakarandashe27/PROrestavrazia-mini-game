@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.playwright-mcp/
+
+# Machine-local configuration and generated verification artifacts
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+/tests/*
+!/tests/README.md
+!/tests/run.mjs
+!/tests/physics.ts
+!/tests/generation-variants.ts
+!/tests/fieldwork.ts
+!/tests/fieldwork-checks.mjs
