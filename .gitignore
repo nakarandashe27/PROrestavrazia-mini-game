@@ -16,3 +16,4 @@ Thumbs.db
 !/tests/generation-variants.ts
 !/tests/fieldwork.ts
 !/tests/fieldwork-checks.mjs
+!/tests/character-motion.ts

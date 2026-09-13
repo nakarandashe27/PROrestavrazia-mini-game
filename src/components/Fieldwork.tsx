@@ -4,8 +4,9 @@ import type { FieldKind, FieldStation } from '../game/fieldwork';
 import { fieldworkSound } from '../game/sound';
 import './fieldwork.css';
 
+const BRICK_STAMP='АРТ-БРОДСКИЙ';
 export const FIELD_NOTES:Record<FieldKind,string>={
- brush:'Клеймо помогает исследовать происхождение кирпича. Сначала наблюдаем, затем бережно работаем.',
+ brush:`На учебном кирпиче — авторский оттиск «${BRICK_STAMP}». Сначала изучаем и фиксируем надпись, затем бережно сохраняем её.`,
  measure:'Обмер сохраняет форму и пропорции детали. Даже небольшой элемент заслуживает внимания.',
  photo:'Фотография до начала работ помогает сравнивать состояние детали и сохранять её историю.'
 };
@@ -17,15 +18,15 @@ export function Fieldwork({station,sound,onDone,onClose}:{station:FieldStation;s
  const lastSound=useRef(0);
  const saveButton=useRef<HTMLButtonElement>(null);
  useEffect(()=>{if(done)saveButton.current?.focus()},[done]);
- function cleanArea(i:number){if(clean.includes(i)||done)return;fieldworkSound('brush',sound);const next=[...clean,i];setClean(next);if(next.length===3){setDone(true);setFeedback('Клеймо проявилось. Теперь его можно зафиксировать в полевом журнале.');fieldworkSound('complete',sound)}}
+ function cleanArea(i:number){if(clean.includes(i)||done)return;fieldworkSound('brush',sound);const next=[...clean,i];setClean(next);if(next.length===3){setDone(true);setFeedback(`Проявился оттиск «${BRICK_STAMP}». Сохраним находку в полевом журнале.`);fieldworkSound('complete',sound)}}
  function change(v:number){setValue(v);setFeedback('');if(performance.now()-lastSound.current>140){fieldworkSound(station.kind==='photo'?'measure':station.kind,sound);lastSound.current=performance.now()}}
  function record(){const target=station.kind==='measure'?60:50;if(Math.abs(value-target)<=3){setDone(true);setFeedback(station.kind==='measure'?'Границы совпали. Обмер сохранит пропорции этой детали.':'Кадр готов. Теперь у детали есть фотография до начала работ.');fieldworkSound(station.kind==='photo'?'photo':'complete',sound)}else setFeedback(station.kind==='measure'?'Пока не совпало: подведи конец линейки к пунктирной границе справа.':'Окно ещё сдвинуто относительно рамки. Совмести два контура.');}
  return <Modal label={`Полевая остановка: ${station.title}`} wide>
   <div className="modal-heading"><span className="eyebrow">ПОЛЕВАЯ ОСТАНОВКА</span><button className="close-button" aria-label="Закрыть полевую остановку" onClick={onClose}>×</button></div>
   <h2 className="field-title">{TITLES[station.kind]}</h2><p>{HINTS[station.kind]}</p>
   <div className={`field-scene field-${station.kind}${done?' field-done':''}`}>
-   <span className="field-specimen">{station.kind==='brush'?'УЧЕБНЫЙ ФРАГМЕНТ · КИРПИЧ':station.kind==='measure'?'ЭСКИЗ ОБМЕРА · ОКОННЫЙ ПРОЁМ':'ФОТОФИКСАЦИЯ · ОКОННЫЙ ПЕРЕПЛЁТ'}</span>
-   {station.kind==='brush'?<div className="dust-brick" aria-label="Кирпич с клеймом"><div className="brick-stamp" aria-hidden="true">✦<span>КЛЕЙМО</span>✦</div><div className="dust-areas" onPointerMove={e=>{if(e.buttons!==1)return;const target=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLButtonElement>('[data-dust]');if(target&&e.currentTarget.contains(target))cleanArea(Number(target.dataset.dust));}}>{[0,1,2].map(i=><button key={i} data-dust={i} className={clean.includes(i)?'clean':''} aria-label={`Очистить участок ${i+1}`} aria-pressed={clean.includes(i)} onClick={()=>cleanArea(i)} onPointerEnter={e=>{if(e.buttons===1)cleanArea(i)}} onPointerDown={e=>{e.preventDefault();cleanArea(i)}}><span aria-hidden="true">{clean.includes(i)?'':'⌁'}</span></button>)}</div></div>:
+   <span className="field-specimen">{station.kind==='brush'?'УЧЕБНЫЙ КИРПИЧ · АВТОРСКИЙ ОТТИСК':station.kind==='measure'?'ЭСКИЗ ОБМЕРА · ОКОННЫЙ ПРОЁМ':'ФОТОФИКСАЦИЯ · ОКОННЫЙ ПЕРЕПЛЁТ'}</span>
+   {station.kind==='brush'?<div className="dust-brick" aria-label={done?`Кирпич с оттиском «${BRICK_STAMP}»`:'Учебный кирпич под пылью'}><div className="brick-stamp" aria-hidden="true"><span className="brick-stamp-ornament">✦</span><div className="brick-stamp-copy"><strong>{BRICK_STAMP}</strong><span>БЕРЕЖНО К ИСТОРИИ</span></div><span className="brick-stamp-ornament">✦</span></div><div className="dust-areas" onPointerMove={e=>{if(e.buttons!==1)return;const target=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLButtonElement>('[data-dust]');if(target&&e.currentTarget.contains(target))cleanArea(Number(target.dataset.dust));}}>{[0,1,2].map(i=><button key={i} data-dust={i} className={clean.includes(i)?'clean':''} aria-label={`Очистить участок ${i+1}`} aria-pressed={clean.includes(i)} onClick={()=>cleanArea(i)} onPointerEnter={e=>{if(e.buttons===1)cleanArea(i)}} onPointerDown={e=>{e.preventDefault();cleanArea(i)}}><span aria-hidden="true">{clean.includes(i)?'':'⌁'}</span></button>)}</div></div>:
     <svg className="field-drawing" viewBox="0 0 400 270" role="img" aria-label={station.kind==='measure'?'Деталь с пунктирными границами и подвижной линейкой':'Окно и контрольная рамка для совмещения'}>
      <defs><pattern id="field-grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#ffffff0d"/></pattern></defs><rect width="400" height="270" fill="url(#field-grid)"/>
      {station.kind==='measure'?<><rect x="90" y="30" width="220" height="156" fill="#cfb595" stroke="#eaddca" strokeWidth="9"/><rect x="108" y="46" width="184" height="124" fill="#506b76"/><path d="M200 46V170M108 90H292" stroke="#d8c6aa" strokeWidth="6"/><path d="M90 12V240M310 12V240" stroke="#d0e97e" strokeDasharray="5 5"/><path d={`M90 210H${190+value*2}`} stroke="#f28d05" strokeWidth="5"/><path d={`M90 201V219M${190+value*2} 201V219`} stroke="#f28d05" strokeWidth="3"/><text x="200" y="253" textAnchor="middle" fill="#d0e97e" fontSize="12">СОВМЕСТИ ГРАНИЦЫ</text></>:

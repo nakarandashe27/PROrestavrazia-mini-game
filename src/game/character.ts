@@ -33,6 +33,21 @@ export function sampleRunArm(phase:number):number {
   return -Math.sin(sampleRunFoot(phase).x / 22 * Math.PI / 2);
 }
 
+/** Forward kinematics keeps the elbow between two fixed-length bones.
+ * Angles are measured from downward; positive flexion bends towards the palm. */
+export function sampleArmPose(shoulder: Point, swing: number, flexion: number) {
+  const elbow: Point = [shoulder[0] + Math.sin(swing) * 13,
+    shoulder[1] + Math.cos(swing) * 13];
+  const hand: Point = [elbow[0] + Math.sin(swing + flexion) * 12,
+    elbow[1] + Math.cos(swing + flexion) * 12];
+  return { shoulder, elbow, hand };
+}
+
+export function sampleRunningArm(shoulder: Point, phase: number) {
+  const swing=sampleRunArm(phase);
+  return sampleArmPose(shoulder,swing*.72-.12,1.28+swing*.16);
+}
+
 const sprites = new Map<string, HTMLCanvasElement>();
 const INK = '#222a36';
 
@@ -107,12 +122,21 @@ function leg(c: CanvasRenderingContext2D, hip: Point, ankle: Point, pants: strin
 
 function arm(c: CanvasRenderingContext2D, shoulder: Point, elbow: Point, hand: Point, jacket: string, far: boolean) {
   const col = shade(jacket, far ? -.3 : 0);
-  segment(c, shoulder, elbow, 4.7, 3.6, INK);
-  segment(c, elbow, hand, 3.5, 2.5, INK);
-  segment(c, [shoulder[0] + 1, shoulder[1]], [elbow[0] + 1, elbow[1]], 3.3, 2.4, col);
-  segment(c, [elbow[0] + 1, elbow[1]], hand, 2.4, 1.7, shade(col, .14));
-  rect(c, hand[0] - 2, hand[1] - 2, 5, 5, far ? '#a69b78' : '#e8d5a1');
-  rect(c, hand[0] + 2, hand[1], 2, 3, far ? '#7b735e' : '#bba576');
+  const outline = shade(col, -.48);
+  const joint = (radius:number,color:string) => polygon(c, Array.from({length:8},(_,i):Point=>
+    [elbow[0]+Math.cos(i*Math.PI/4)*radius,elbow[1]+Math.sin(i*Math.PI/4)*radius]),color);
+  segment(c, shoulder, elbow, 4.2, 3.3, outline);
+  joint(3.3,outline);
+  segment(c, elbow, hand, 3.3, 2.3, outline);
+  segment(c, shoulder, elbow, 3.1, 2.3, col);
+  joint(2.3,col);
+  segment(c, elbow, hand, 2.3, 1.5, shade(col, .12));
+  // The cuff and softly closed glove rotate with the wrist, rather than floating.
+  const dx=(hand[0]-elbow[0])/12,dy=(hand[1]-elbow[1])/12;
+  const at=(along:number,across:number):Point=>[hand[0]+dx*along-dy*across,hand[1]+dy*along+dx*across];
+  segment(c,at(-2,0),at(0,0),2.1,2.1,shade(col,-.24));
+  polygon(c,[at(0,-2),at(3,-2),at(4,-1),at(4,1),at(2,2),at(0,2)],far?'#a48d68':'#dbc397');
+  segment(c,at(1,1.5),at(3,1.5),.6,.6,far?'#82704f':'#b69b6d');
 }
 
 function createSprite(a: Avatar, state: string, frame: number, compression: number) {
@@ -123,27 +147,30 @@ function createSprite(a: Avatar, state: string, frame: number, compression: numb
   const running = state === 'run', rising = state === 'rise', airborne = rising || state === 'fall';
   const t = frame / (running ? RUN_FRAMES : 12) * Math.PI * 2;
   const breath = state === 'idle' ? Math.sin(t) * .55 : 0;
-  const bob = running ? Math.cos(t * 2 - Math.PI * .64) * 1.6 + 2 : breath + compression * 6;
-  const lean = running ? 4 : airborne ? 3 : 0;
+  const bob = running ? Math.cos(t * 2 - Math.PI * .64) * 1.25 + 1.5 : breath + compression * 6;
+  const lean = running ? 3 : airborne ? 2 : 0;
   const hip: Point = [0, (state === 'idle' ? -42.5 : running ? -39 : -40) + bob];
   const shoulder: Point = [lean, -64 + bob];
   const feet = (phase: number): Point => { const foot = sampleRunFoot(phase); return [foot.x, foot.y]; };
   const farFoot: Point = running ? feet(t + Math.PI) : airborne ? [-13, rising ? -12 : -5] : [-6, -3];
   const nearFoot: Point = running ? feet(t) : airborne ? [15, rising ? -19 : -8] : [5, -3];
-  const nearSwing=sampleRunArm(t),farSwing=sampleRunArm(t+Math.PI);
-  const farElbow: Point = running ? [lean + farSwing * 10 - 3, -51 + bob] : airborne ? [-12, -59] : [-7, -50 + bob];
-  const farHand: Point = running ? [lean + farSwing * 15 + 2, -49 - Math.max(0, farSwing) * 10 + bob] : airborne ? [-18, rising ? -70 : -57] : [-5, -39 + bob];
-  const nearElbow: Point = running ? [lean + nearSwing * 10 + 2, -51 + bob] : airborne ? [17, -59] : [7, -51 + bob];
-  const nearHand: Point = running ? [lean + nearSwing * 16 + 8, -49 - Math.max(0, nearSwing) * 10 + bob] : airborne ? [22, rising ? -73 : -64] : [8, -39 + bob];
+  const pose = (far:boolean) => {
+    const phase=t+(far?Math.PI:0);
+    const origin:Point=[shoulder[0]+(far?-4:2),shoulder[1]+2];
+    if(running)return sampleRunningArm(origin,phase);
+    if(airborne)return sampleArmPose(origin,far?-.65:.55,rising?1.5:1.05);
+    return sampleArmPose(origin,far?-.16:.08,.13);
+  };
+  const farArm=pose(true),nearArm=pose(false);
 
-  arm(c, [shoulder[0] - 3, shoulder[1] + 2], farElbow, farHand, a.jacket, true);
+  arm(c,farArm.shoulder,farArm.elbow,farArm.hand,a.jacket,true);
   leg(c, [-2, hip[1]], farFoot, a.pants, true);
   // Narrow canvas equipment roll, restrained orange accent and strapped flap.
   polygon(c, [[lean - 11, -65 + bob], [lean - 5, -65 + bob], [-7, -44 + bob], [-14, -46 + bob], [-14, -60 + bob]], '#584c3e');
   polygon(c, [[lean - 12, -63 + bob], [lean - 7, -63 + bob], [-9, -47 + bob], [-13, -48 + bob]], '#a08458');
   rect(c, lean - 13, -61 + bob, 5, 3, '#F28D05');
-  segment(c, [lean - 12, -69 + bob], [lean - 13, -55 + bob], 1, 1, '#d5bd88');
-  rect(c, lean - 14, -71 + bob, 4, 4, '#c6c2ad');
+  segment(c, [lean - 12, -59 + bob], [lean - 13, -49 + bob], 1, 1, '#d5bd88');
+  rect(c, lean - 14, -62 + bob, 3, 4, '#c6c2ad');
 
   leg(c, [2, hip[1]], nearFoot, a.pants, false);
   // Tailored work jacket: shoulder slope, waist, side shadow and stitched pockets.
@@ -159,26 +186,29 @@ function createSprite(a: Avatar, state: string, frame: number, compression: numb
   rect(c, -5, -47 + bob, 9, 2, '#c5d793');
   rect(c, -6, -41 + bob, 13, 3, '#3b3736');
   rect(c, 2, -41 + bob, 3, 3, '#b5b5a3');
-  // Hip pouch with brass clasp and a small hanging brush.
+  // Tools stay tucked into the pouch: no loose silhouette resembling a third arm.
   polygon(c, [[-9, -43 + bob], [-3, -43 + bob], [-2, -34 + bob], [-8, -33 + bob]], '#73523c');
   rect(c, -8, -42 + bob, 5, 2, '#b38a5a');
   rect(c, -6, -38 + bob, 2, 2, '#d6b870');
-  segment(c, [-11, -41 + bob], [-12, -30 + bob], .8, .8, '#c8a87a');
-  rect(c, -14, -30 + bob, 4, 4, '#b8ae92');
+  segment(c, [-8, -44 + bob], [-7, -36 + bob], .8, .8, '#c8a87a');
+  rect(c, -9, -45 + bob, 3, 3, '#b8ae92');
 
   const hx = lean + 1, hy = -78 + bob;
-  rect(c, hx - 3, hy + 8, 6, 5, shade(a.skin, -.2));
-  // Profile, brow, projecting nose and jaw: a human head, not a round mascot.
-  polygon(c, [[hx - 6, hy - 1], [hx + 3, hy - 2], [hx + 6, hy + 1], [hx + 6, hy + 5],
-    [hx + 8, hy + 6], [hx + 7, hy + 8], [hx + 5, hy + 8], [hx + 4, hy + 11],
-    [hx - 2, hy + 11], [hx - 5, hy + 7]], shade(a.skin, -.28));
-  polygon(c, [[hx - 2, hy], [hx + 4, hy], [hx + 5, hy + 5], [hx + 7, hy + 6],
-    [hx + 4, hy + 7], [hx + 3, hy + 10], [hx - 1, hy + 9]], a.skin);
-  rect(c, hx - 5, hy + 1, 3, 6, a.hair);
-  rect(c, hx - 3, hy + 5, 2, 3, shade(a.skin, .14));
-  rect(c, hx + 3, hy + 3, 3, 1, '#45382e');
-  rect(c, hx + 4, hy + 4, 1, 1, '#222a36');
-  rect(c, hx + 3, hy + 8, 2, 1, '#785640');
+  rect(c, hx - 3, hy + 10, 5, 5, shade(a.skin, -.14));
+  // Softer cheek and chin, a short nose and an open eye under the brim.
+  polygon(c, [[hx - 6, hy], [hx + 3, hy], [hx + 5, hy + 3], [hx + 5, hy + 7],
+    [hx + 6, hy + 8], [hx + 5, hy + 9], [hx + 4, hy + 9], [hx + 4, hy + 12],
+    [hx + 1, hy + 14], [hx - 3, hy + 13], [hx - 5, hy + 10]], shade(a.skin, -.16));
+  polygon(c, [[hx - 3, hy + 1], [hx + 3, hy + 2], [hx + 4, hy + 5], [hx + 4, hy + 7],
+    [hx + 5, hy + 8], [hx + 3, hy + 9], [hx + 3, hy + 12], [hx, hy + 13],
+    [hx - 3, hy + 11], [hx - 4, hy + 6]], a.skin);
+  rect(c, hx - 5, hy + 2, 2, 6, a.hair);
+  rect(c, hx - 4, hy + 7, 3, 3, shade(a.skin, .16));
+  rect(c, hx + 1, hy + 5, 3, 2, shade(a.skin,.35));
+  rect(c, hx + 2, hy + 5, 1, 2, '#30302d');
+  rect(c, hx, hy + 9, 2, 1, shade(a.skin,.13));
+  rect(c, hx + 1, hy + 11, 2, 1, shade(a.skin,-.34));
+  rect(c, hx + 3, hy + 10, 1, 1, shade(a.skin,-.34));
   if (a.hat === 'helmet') {
     const hat=a.hatColor??'#F28D05';
     polygon(c, [[hx - 8, hy + 1], [hx - 7, hy - 4], [hx - 4, hy - 7], [hx + 2, hy - 7],
@@ -198,7 +228,7 @@ function createSprite(a: Avatar, state: string, frame: number, compression: numb
     polygon(c, [[hx - 7, hy + 2], [hx - 7, hy - 2], [hx - 4, hy - 4], [hx + 2, hy - 4],
       [hx + 5, hy - 1], [hx + 1, hy + 1], [hx - 3, hy]], a.hair);
   }
-  arm(c, [shoulder[0] + 1, shoulder[1] + 2], nearElbow, nearHand, a.jacket, false);
+  arm(c,nearArm.shoulder,nearArm.elbow,nearArm.hand,a.jacket,false);
   // The shoulder patch is applied last so it follows the near upper arm.
   rect(c, shoulder[0] - 1, shoulder[1] + 2, 4, 2, '#D0E97E');
   return canvas;
