@@ -25,7 +25,7 @@
  .welcome .hero-copy>.eyebrow{order:0;margin:0 6% 14px;}
  .welcome .hero-copy>h1{order:0;margin:0 6% 22px;font-size:60px;}
  .welcome .hero-copy>p{order:0;margin:0 6% 0;}
- .welcome .hero-art{inset:30px 6% auto auto;width:40%;height:220px;opacity:.2;}
+ .welcome .hero-art{position:relative;order:1;inset:auto;width:88%;height:auto;aspect-ratio:1672/941;flex-shrink:0;margin:22px 6% 0;opacity:1;background-size:contain;background-position:center;}
  .welcome .location-tag,.welcome .hero-meta{display:none;}
  .welcome .expedition-setup{order:1;width:88%;max-width:none;margin:22px 6% 18px;}
  .welcome .route-picker{order:2;width:88%;max-width:none;margin:0 6% 14px;}
