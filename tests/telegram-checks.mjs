@@ -97,7 +97,65 @@ try {
     results.push({viewport:size,...layout,errors});
     await context.close();
   }
+  // Rejected/interrupted Web Audio must recover from a real tap, without unhandled promises.
+  const audioContext=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+  const audioPage=await audioContext.newPage();
+  const audioErrors=[];audioPage.on('pageerror',error=>audioErrors.push(error.message));
+  await audioPage.addInitScript(()=>{
+    window.blockAudio=true;
+    Object.defineProperty(navigator,'audioSession',{value:{type:'auto'},configurable:true});
+    const NativeAudio=window.AudioContext;
+    window.AudioContext=class extends NativeAudio{
+      constructor(...args){super(...args);window.testAudio=this;}
+      get state(){return window.blockAudio?'suspended':super.state;}
+      resume(){return window.blockAudio?Promise.reject(new DOMException('Gesture required','NotAllowedError')):super.resume();}
+      createAnalyser(){const node=super.createAnalyser();window.testAnalyser=node;return node;}
+    };
+  });
+  await audioPage.route('https://telegram.org/js/telegram-web-app.js?63',route=>route.fulfill({contentType:'text/javascript',body:sdk}));
+  await audioPage.goto(`${origin}?telegram=1`);
+  await audioPage.getByRole('button',{name:'Сразу в мастерскую на лесах'}).click();
+  await audioPage.getByRole('button',{name:'В путь'}).click();
+  await audioPage.getByRole('button',{name:'Нажмите, чтобы включить звук'}).waitFor();
+  await audioPage.evaluate(()=>{window.blockAudio=false});
+  await audioPage.getByRole('button',{name:'Нажмите, чтобы включить звук'}).tap();
+  const audible=()=>audioPage.waitForFunction(()=>{
+    const a=window.testAnalyser;if(!a)return false;
+    const samples=new Uint8Array(a.fftSize);a.getByteTimeDomainData(samples);
+    return window.testAudio.state==='running'&&samples.some(value=>Math.abs(value-128)>0);
+  });
+  await audible();
+  assert.equal(await audioPage.evaluate(()=>navigator.audioSession.type),'playback');
+  await audioPage.evaluate(()=>window.tgTest.emit('deactivated'));
+  await audioPage.getByRole('dialog',{name:'Пауза',exact:true}).waitFor();
+  assert.equal(await audioPage.evaluate(()=>navigator.audioSession.type),'auto');
+  await audioPage.evaluate(()=>window.testAudio.suspend());
+  await audioPage.getByRole('button',{name:'Продолжить',exact:false}).tap();
+  await audible();
+  await audioPage.getByRole('button',{name:'Выключить звук',exact:true}).tap();
+  assert.equal(await audioPage.evaluate(()=>navigator.audioSession.type),'auto');
+  await audioPage.getByRole('button',{name:'Включить звук',exact:true}).tap();
+  await audible();
+  assert.deepEqual(audioErrors,[]);
+  await audioContext.close();
   const page=await browser.newPage();
+  await page.route('https://telegram.org/js/telegram-web-app.js?63',route=>route.fulfill({contentType:'text/javascript',body:sdk}));
+  // A cached launcher must preserve Telegram parameters and request a fresh release.
+  const release=JSON.parse(await (await fetch(new URL('version.json',origin))).text()).version;
+  await page.goto(`${origin}telegram.html?tgWebAppStartParam=route#tgWebAppPlatform=android&tgWebAppVersion=8.0`);
+  await page.waitForURL(url=>url.pathname.endsWith('/index.html'));
+  let launchUrl=new URL(page.url());
+  assert.equal(launchUrl.searchParams.get('v'),release);
+  assert.equal(launchUrl.searchParams.get('telegram'),'1');
+  assert.equal(launchUrl.searchParams.get('tgWebAppStartParam'),'route');
+  assert.equal(launchUrl.hash,'#tgWebAppPlatform=android&tgWebAppVersion=8.0');
+  await page.route('**/version.json?*',route=>route.abort());
+  await page.goto(`${origin}telegram.html`);
+  await page.waitForURL(url=>url.pathname.endsWith('/index.html'));
+  launchUrl=new URL(page.url());
+  assert.match(launchUrl.searchParams.get('v'),/^\d{13}$/);
+  await page.unroute('**/version.json?*');
+  await page.unroute('https://telegram.org/js/telegram-web-app.js?63');
   let requests=0;
   await page.route('https://telegram.org/**',route=>{requests++;return route.abort()});
   await page.goto(origin);
@@ -120,7 +178,7 @@ try {
   await page.getByRole('button',{name:'Полный экран',exact:true}).click();
   await page.getByRole('status').filter({hasText:'обновите Telegram'}).waitFor();
   assert.deepEqual(await page.evaluate(()=>window.tgTest.calls.map(call=>call[0]).filter(name=>!['ready','expand'].includes(name))),[]);
-  console.log(JSON.stringify({passed:true,results,website:true,blockedSdk:true,offline:true,legacyClient:true},null,2));
+  console.log(JSON.stringify({passed:true,results,website:true,blockedSdk:true,offline:true,legacyClient:true,audioRecovery:true,versionedLaunch:true},null,2));
 } finally {
   await browser?.close();
   if (server.exitCode === null) { server.kill(); await once(server,'exit'); }

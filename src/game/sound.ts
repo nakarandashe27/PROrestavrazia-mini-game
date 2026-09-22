@@ -12,8 +12,26 @@ const lastFieldAt:Record<FieldworkSound,number>={brush:-Infinity,measure:-Infini
 const events={music:0,ambient:0,voice:0,chime:0,jump:0,land:0,step:0,recover:0,fieldwork:0};
 const fieldworkEvents:Record<FieldworkSound,number>={brush:0,measure:0,photo:0,complete:0};
 const ambientEvents:Record<WorkSound,number>={brush:0,wood:0,rustle:0};
-function init(){if(!context){context=new AudioContext();master=context.createGain();master.gain.value=.65;analyser=context.createAnalyser();analyser.fftSize=256;master.connect(analyser);analyser.connect(context.destination);}return context;}
-export function unlockSound(){try{const c=init();void c.resume();}catch{}}
+function audioSession(type:'playback'|'auto'){
+ // Feature-detected for iOS/WKWebView. No microphone or silent media workaround.
+ try{const session=(navigator as Navigator & {audioSession?:{type:string}}).audioSession;if(session&&session.type!==type)session.type=type;}catch{}
+}
+function init(){if(!context||context.state==='closed'){
+ const Audio=window.AudioContext||(window as Window & {webkitAudioContext?:typeof AudioContext}).webkitAudioContext;
+ if(!Audio)throw new Error('Web Audio unavailable');
+ context=new Audio();master=context.createGain();master.gain.value=.65;analyser=context.createAnalyser();analyser.fftSize=256;master.connect(analyser);analyser.connect(context.destination);
+ }return context;}
+export function unlockSound(){
+ try{
+  if(context?.state==='running'){if(enabled&&playing)audioSession('playback');return;}
+  audioSession('playback');
+  const c=init();
+  if(c.state==='running')return;
+  // Called synchronously from user input, including the first tap after interruption.
+  // Handle promise rejection as well as a synchronous failure in older WebViews.
+  void c.resume().then(()=>{if(context===c)setSoundscape(enabled,playing,dusk);}).catch(()=>{});
+ }catch{}
+}
 function connectVoice(source:AudioScheduledSourceNode,gain:GainNode,at:number,end:number,ambient:boolean,filters:AudioNode[]=[]){
  if(!master)return;gain.connect(master);const voice={source,gain};if(ambient)ambientVoices.add(voice);
  source.start(at);source.stop(end);scheduled++;
@@ -74,6 +92,7 @@ function pulse(){if(!enabled||!playing||context?.state!=='running')return;
 }
 export function setSoundscape(on:boolean,active:boolean,night:number){
  enabled=on;playing=active;dusk=night;
+ audioSession(on&&active?'playback':'auto');
  if(!context)return;
  const now=context.currentTime;master!.gain.cancelScheduledValues(now);master!.gain.setTargetAtTime(on?(active?.7:.35):0,now,.09);
  if(on&&active&&!timer){pulse();timer=setInterval(pulse,580);}
@@ -105,5 +124,5 @@ export function fieldworkSound(kind:FieldworkSound,on:boolean){
  else [392,523.25,659.25].forEach((freq,i)=>note(freq,now+i*.09,.48,.05));
  events.fieldwork++;fieldworkEvents[kind]++;lastEvent=`fieldwork:${kind}`;
 }
-export function stopSoundscape(){if(timer)clearInterval(timer);timer=undefined;playing=false;stopWorkVoices();if(context&&master)master.gain.setTargetAtTime(0,context.currentTime,.06);}
+export function stopSoundscape(){if(timer)clearInterval(timer);timer=undefined;playing=false;stopWorkVoices();if(context&&master)master.gain.setTargetAtTime(0,context.currentTime,.06);audioSession('auto');}
 export function audioStatus(){let peak=0;if(analyser){const samples=new Uint8Array(analyser.fftSize);analyser.getByteTimeDomainData(samples);for(const s of samples)peak=Math.max(peak,Math.abs(s-128));}return {state:context?.state??'not-started',enabled,playing,scheduled,peak,gain:master?.gain.value??0,location:workLocation,workProfile,activeAmbientSources:ambientVoices.size,lastEvent,events:{...events},fieldworkEvents:{...fieldworkEvents},ambientEvents:{...ambientEvents}};}

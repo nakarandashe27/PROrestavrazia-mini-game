@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Открываем Архисбор</title>
+<style>body{margin:0;min-height:100dvh;display:grid;place-content:center;background:#262626;color:#fff;font:18px system-ui;text-align:center;padding:24px;box-sizing:border-box}a{color:#d0e97e}</style></head>
+<body><p>Открываем игру…</p><a id="start" href="./index.html?telegram=1">Открыть игру</a>
+<script>
+// This small, stable launcher can itself be cached. The release lookup cannot.
+// Preserve Telegram's launch fragment verbatim; never send it to the version endpoint.
+const target=new URL('./index.html',location.href);
+target.search=location.search;target.searchParams.set('telegram','1');target.hash=location.hash;
+const launch=version=>{target.searchParams.set('v',version);document.getElementById('start').href=target.href;location.replace(target.href)};
+const release=new URL('./version.json',location.href);release.searchParams.set('check',String(Date.now()));
+const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),4000);
+fetch(release,{cache:'no-store',signal:abort.signal}).then(response=>{if(!response.ok)throw Error('version');return response.json()}).then(data=>{
+ if(!/^\d+\.\d+\.\d+$/.test(data.version))throw Error('version');launch(data.version);
+}).catch(()=>launch(String(Date.now()))).finally(()=>clearTimeout(timeout));
+</script></body></html>

@@ -449,15 +449,8 @@ export class Engine {
     ctx.save();
     ctx.translate(-this.camX, 0);
     this.litLayers(ctx,night=>drawTerrain(ctx,st,this.camX,W,night,this.time));
-    if(st.kind==='facade'){
-      ctx.save();ctx.strokeStyle=this.night?'#a2b1b080':'#576d7570';ctx.lineWidth=2;
-      ctx.beginPath();
-      for(let sx=550;sx<3200;sx+=250){
-        ctx.moveTo(sx,200);ctx.lineTo(sx,st.ground);
-        for(let sy=220;sy<st.ground;sy+=200){ctx.moveTo(sx,sy);ctx.lineTo(sx+250,Math.min(st.ground,sy+200));ctx.moveTo(sx,sy);ctx.lineTo(sx+250,sy);}
-      }
-      ctx.stroke();ctx.restore();
-    }
+    // Keep the facade readable: no decorative wire grid over the architecture.
+    // Traversable decks and their brackets are drawn from actual platforms below.
 
     // декор
     for (const d of st.decor) {

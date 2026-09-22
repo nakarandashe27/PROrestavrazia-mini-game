@@ -18,6 +18,7 @@ import { Certificate } from './components/Certificate';
 import { StartSetup, LightingPicker } from './components/StartSetup';
 import './setup.css';
 import { useTelegram } from './telegram';
+import { GameVersion } from './components/GameVersion';
 
 type Screen='start'|'studio'|'intro'|'play'|'term'|'workshop'|'fieldwork'|'pause'|'album'|'about'|'end'|'certificate';
 type Route='short'|'full';
@@ -30,6 +31,7 @@ export default function App(){
  const [count,setCount]=useState(0),[restored,setRestored]=useState<string[]>([]),[current,setCurrent]=useState<FacadeElement|null>(null),[termsDone,setTermsDone]=useState(0);
  const [sound,setSound]=useState(true),[lighting,setLighting]=useState<LightingMode>('cycle'),[assist,setAssist]=useState(false),[seconds,setSeconds]=useState(0),[toast,setToast]=useState('');
  const [playerName,setPlayerName]=useState(''),[avatar,setAvatar]=useState<Avatar>({...AVATAR});
+ const [audioBlocked,setAudioBlocked]=useState(false);
  const [field,setField]=useState<FieldStation|null>(null),[nearby,setNearby]=useState<FieldStation|null>(null),[fieldNotes,setFieldNotes]=useState<FieldStation[]>([]);
  const studioBack=useRef<'start'|'pause'>('start');
  const back=useRef<Screen>('start');
@@ -67,6 +69,16 @@ export default function App(){
  useEffect(()=>{if(engine.current){engine.current.paused=screen!=='play';if(screen!=='play')engine.current.clearInput()}},[screen]);
  useEffect(()=>{if(engine.current){engine.current.setLighting(lighting);engine.current.autoJump=assist;engine.current.setAvatar(avatar)}},[lighting,assist,avatar]);
  useEffect(()=>{setWorkAmbience(engine.current?.location??'');setSoundscape(sound,screen==='play',engine.current?.nightAmount??0)},[sound,screen,seconds]);
+ useEffect(()=>{
+  if(!sound||screen!=='play'){setAudioBlocked(false);return;}
+  const id=setInterval(()=>setAudioBlocked(audioStatus().state!=='running'),1200);
+  return()=>clearInterval(id);
+ },[sound,screen]);
+ useEffect(()=>{
+  const unlock=(event:Event)=>{if(event.isTrusted&&state.current.sound&&!['start','studio','about','end','certificate'].includes(state.current.screen))unlockSound()};
+  document.addEventListener('click',unlock,true);document.addEventListener('pointerup',unlock,true);document.addEventListener('keydown',unlock,true);
+  return()=>{document.removeEventListener('click',unlock,true);document.removeEventListener('pointerup',unlock,true);document.removeEventListener('keydown',unlock,true)};
+ },[]);
  useEffect(()=>{if(screen!=='play'){setNearby(null);return;}const poll=()=>{const next=engine.current?.nearbyStation??null;setNearby(prev=>prev?.id===next?.id?prev:next)};poll();const id=setInterval(poll,150);return()=>clearInterval(id)},[screen]);
  useEffect(()=>{
   const down=(e:KeyboardEvent)=>{
@@ -89,7 +101,7 @@ export default function App(){
  useEffect(()=>{if(screen!=='play')return;const id=setInterval(()=>setSeconds(Math.floor(engine.current?.time??0)),500);return()=>clearInterval(id)},[screen]);
  useEffect(()=>{if(!toast)return;const id=setTimeout(()=>setToast(''),3500);return()=>clearTimeout(id)},[toast]);
 
- function load(p:1|2,idx:number,sd=seed){engine.current!.loadStage(p===1?generateLetterStage(TERMS[idx],sd+idx*101):generateFacadeStage(FACADE_ELEMENTS.slice(0,totalParts),sd));setCount(0);setPhase(p);setTermIdx(idx);setScreen('play')}
+ function load(p:1|2,idx:number,sd=seed){if(sound)unlockSound();engine.current!.loadStage(p===1?generateLetterStage(TERMS[idx],sd+idx*101):generateFacadeStage(FACADE_ELEMENTS.slice(0,totalParts),sd));setCount(0);setPhase(p);setTermIdx(idx);setScreen('play')}
  function start(p:1|2=1){unlockSound();if(sound)chime(true);const sd=newSeed();setSeed(sd);setPhase(p);setTermIdx(0);setCount(0);setRestored([]);setFieldNotes([]);setField(null);setTermsDone(0);setSeconds(0);setToast('');engine.current!.time=0;engine.current!.restored=0;if(lighting==='cycle')engine.current!.nightAmount=0;setScreen('intro')}
  function nextTerm(){if(termIdx+1<totalTerms)load(1,termIdx+1);else{setPhase(2);setScreen('intro')}}
  function finishDetail(){const result=[...restored,current!.id];setRestored(result);engine.current!.restored=result.length*6/totalParts;chime(sound);if(result.length===totalParts){setSeconds(Math.floor(engine.current!.time));setToast('');setScreen('end')}else{setToast(`${current!.name} — сохранено в альбоме`);setScreen('play')}}
@@ -115,6 +127,7 @@ export default function App(){
    <div className="location-tag"><span className="location-cross">⌖</span><div>МОСКВА, ЗАМОСКВОРЕЧЬЕ<br/><b>Пятницкая, 71/5с1</b></div><span className="location-year">1903</span></div>
    <div className="journey-strip"><div><span>01</span><b>Соберите слово</b><small>Узнайте язык реставрации</small></div><div><span>02</span><b>Исследуйте фасад</b><small>Поднимитесь на леса</small></div><div><span>03</span><b>Сохраните историю</b><small>Восстановите детали</small></div><a href="https://прореставрацию.рф/" target="_blank" rel="noreferrer">ПРО<br/><strong>РЕСТАВРАЦИЮ ↗</strong></a></div>
   </main>}
+  {screen==='start'&&<GameVersion/>}
   {screen==='play'&&<>
    <div className="hud"><div className="chapter"><span className="eyebrow">{phase===1?'01 / путь к типографии':'02 / мастерская на лесах'}</span><b>{phase===1?'Соберите буквы по порядку':'Найдите следующую деталь'}</b></div><div className="progress-area">{phase===1?<div className="letter-slots" aria-label={`Слово ${TERMS[termIdx].word}, собрано ${count} из ${TERMS[termIdx].word.length}`}>
     {[...TERMS[termIdx].word].map((letter,i)=><span key={i} className={i<count?'done':i===count?'next':''}>{letter.toUpperCase()}</span>)}
@@ -126,6 +139,7 @@ export default function App(){
    </div></div>
   </>}
   {toast&&<div className="toast" role="status">✓ {toast}</div>}
+  {audioBlocked&&screen==='play'&&<button className="audio-retry" onClick={unlockSound}>♪ Нажмите, чтобы включить звук</button>}
   {screen==='intro'&&<Modal label="Начало этапа"><div className="intro-illustration">{phase===1?<><span>Р</span><span>Е</span><span>С</span><i>→</i></>:<Detail id="portal"/>}</div><span className="eyebrow">{phase===1?'01 / по Пятницкой':'02 / у фасада типографии'}</span><h2>{phase===1?'История начинается с буквы':'Время стать реставратором'}</h2><p>{phase===1?'Собирайте буквы по порядку. Впереди дворы, крыши, мосты и подземные галереи. У полевых станций можно остановиться и исследовать находку: нажмите E или кнопку на экране. Прыгайте через разрывы; после падения вы вернётесь на последнюю площадку с сохранёнными находками.':'Прыгайте по ярусам лесов к пронумерованным деталям. Соберите каждую по образцу и выберите бережный способ работы.'}</p><div className="intro-controls"><div><kbd>← →</kbd><span>Двигайтесь</span></div><div><kbd><span className="desktop-key">Пробел</span><span className="touch-key">↑</span></kbd><span>Удерживайте для высокого прыжка</span></div>{phase===2&&<div><kbd>↓</kbd><span>Спуститесь на ярус ниже</span></div>}</div><label className="check-setting"><input type="checkbox" checked={assist} onChange={e=>setAssist(e.target.checked)}/>Помогать с прыжками <small>герой помогает перепрыгивать разрывы и подниматься на площадки</small></label><button className="primary" onClick={()=>load(phase,termIdx)}>В путь <span>→</span></button><button className="text-button" onClick={()=>setScreen('start')}>На главную</button></Modal>}
   {screen==='term'&&<Modal label="Слово собрано"><span className="round-seal">✓</span><span className="eyebrow">СЛОВО СОБРАНО / {TERMS[termIdx].tag}</span><h2 className="term-title">{TERMS[termIdx].word}</h2><h3>{TERMS[termIdx].short}</h3><p>{TERMS[termIdx].def}</p><div className="reference-note"><p>{TERMS[termIdx].example}</p></div><button className="primary" onClick={nextTerm}>{termIdx+1<totalTerms?'К следующему слову':'К типографии Сытина'} <span>→</span></button></Modal>}
   {screen==='workshop'&&current&&<Modal label={`Реставрация: ${current.name}`} wide><Workshop key={current.id} element={current} seed={seed} sound={sound} onDone={finishDetail}/></Modal>}
