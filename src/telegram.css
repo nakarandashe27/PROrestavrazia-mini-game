@@ -1,0 +1,45 @@
+/* Keep the whole game, including portals, inside Telegram's usable viewport. */
+.in-telegram {
+  --app-height: calc(var(--telegram-height, 100dvh) - var(--telegram-top, 0px) - var(--telegram-bottom, 0px));
+  overscroll-behavior: none;
+}
+.in-telegram body { overflow: hidden; background: #262626; }
+.in-telegram #root {
+  position: fixed;
+  top: var(--telegram-top, 0px);
+  left: var(--telegram-left, 0px);
+  right: var(--telegram-right, 0px);
+  height: var(--app-height);
+}
+.in-telegram .app { position: relative; height: 100%; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.in-telegram .app[data-screen="play"] { overflow: hidden; }
+.in-telegram .modal-backdrop,
+.in-telegram .character-studio,
+.in-telegram .certificate-screen {
+  top: var(--telegram-top, 0px);
+  left: var(--telegram-left, 0px);
+  right: var(--telegram-right, 0px);
+  bottom: auto;
+  height: var(--app-height);
+}
+.in-telegram .certificate-photo-exit { bottom: calc(var(--telegram-bottom, 0px) + 10px); right: calc(var(--telegram-right, 0px) + 14px); }
+.in-telegram .certificate-photo .certificate-paper { width: min(100%, calc(var(--app-height) * 1.414141)); }
+.in-telegram .toast { bottom: calc(var(--telegram-bottom, 0px) + 90px); }
+@media (pointer: coarse) {
+  .in-telegram .intro-controls .desktop-key { display: none; }
+  .in-telegram .intro-controls .touch-key { display: inline; }
+}
+.touch-key { display: none; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .in-telegram .topbar { height: 48px; }
+  .in-telegram .brand svg { height: 32px; }
+  .in-telegram .hud { top: 48px; min-height: 52px; padding-top: 6px; padding-bottom: 6px; flex-wrap: nowrap; }
+  .in-telegram .chapter .eyebrow { font-size: 8px; }
+  .in-telegram .chapter b { font-size: 10px; }
+  .in-telegram .progress-area { width: auto; order: 0; }
+  .in-telegram .letter-slots { gap: 3px; }
+  .in-telegram .letter-slots span { width: 22px; height: 26px; font-size: 12px; }
+  .in-telegram .world { top: 100px; bottom: 60px; }
+  .in-telegram .play-footer { height: 60px; padding-top: 4px; padding-bottom: 4px; }
+  .in-telegram .touch-controls button { min-height: 44px; height: 48px; }
+}

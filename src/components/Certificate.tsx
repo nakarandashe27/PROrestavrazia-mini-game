@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { certificateName, downloadCertificate, renderCertificate } from '../game/certificate';
+import { buildCertificatePdf, certificateName, downloadCertificate, renderCertificate } from '../game/certificate';
+import { getTelegram } from '../telegram';
 import './certificate.css';
 
 export type CertificateProps = { name: string; terms: number; details: number; onClose: () => void };
@@ -11,11 +12,23 @@ export function Certificate({ name, terms, details, onClose }: CertificateProps)
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState(false);
   const [error, setError] = useState('');
+  const [telegram] = useState(() => !!getTelegram());
+  const [shareFile, setShareFile] = useState<File | null>(null);
+  const canShare = telegram && !!navigator.canShare?.({ files: [new File([''], 'certificate.pdf', { type: 'application/pdf' })] });
   useEffect(() => {
     let active = true;
     renderCertificate(canvas.current!, name, terms, details).then(() => { if (active) setReady(true); }).catch(() => { if (active) setError('Не удалось подготовить сертификат. Попробуй открыть его ещё раз.'); });
     return () => { active = false; };
   }, [name, terms, details]);
+  useEffect(() => {
+    if (!canShare) return;
+    let active = true;
+    // Prepare before the tap: Web Share requires transient user activation.
+    void buildCertificatePdf(name, terms, details).then(blob => {
+      if (active) setShareFile(new File([blob], 'Хранитель наследия.pdf', { type: 'application/pdf' }));
+    }).catch(() => { if (active) setError('Не удалось подготовить PDF. Можно сфотографировать сертификат.'); });
+    return () => { active = false; };
+  }, [canShare, name, terms, details]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     root.current?.focus();
@@ -33,16 +46,19 @@ export function Certificate({ name, terms, details, onClose }: CertificateProps)
   }, [photo, onClose]);
   async function save() {
     setBusy(true); setError('');
-    try { await downloadCertificate(name, terms, details); }
-    catch { setError('PDF не сохранился. Попробуй ещё раз или сфотографируй сертификат.'); }
+    try {
+      if (telegram && shareFile) await navigator.share({ files: [shareFile], title: 'Хранитель наследия' });
+      else if (!telegram) await downloadCertificate(name, terms, details);
+    }
+    catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setError('PDF не сохранился. Попробуй ещё раз или сфотографируй сертификат.'); }
     finally { setBusy(false); }
   }
   return <div ref={root} className={`certificate-screen${photo ? ' certificate-photo' : ''}`} role="dialog" aria-modal="true" aria-label="Именной сертификат хранителя наследия" tabIndex={-1}>
     <div className="certificate-toolbar">
-      <div><strong>Твой сертификат</strong><span>Сохрани на память или сфотографируй экран.</span><span className="certificate-rotate-hint">Поверни телефон, чтобы рассмотреть крупнее.</span></div>
+      <div><strong>Твой сертификат</strong><span>{telegram && !canShare ? 'Открой «Для фотографии» и сделай снимок экрана на память.' : 'Сохрани на память или сфотографируй экран.'}</span><span className="certificate-rotate-hint">Поверни телефон, чтобы рассмотреть крупнее.</span></div>
       <div className="certificate-actions">
         <button className="secondary certificate-photo-button" onClick={() => setPhoto(true)}>Для фотографии</button>
-        <button className="primary" onClick={save} disabled={!ready || busy}>{busy ? 'Готовим PDF…' : 'Скачать PDF'}</button>
+        {(!telegram || canShare) && <button className="primary" onClick={save} disabled={!ready || busy || (telegram && !shareFile)}>{busy ? 'Готовим PDF…' : telegram ? 'Сохранить PDF' : 'Скачать PDF'}</button>}
         <button className="certificate-close" onClick={onClose} aria-label="Закрыть сертификат">×</button>
       </div>
     </div>

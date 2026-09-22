@@ -17,6 +17,7 @@ import { Reveal } from './components/Reveal';
 import { Certificate } from './components/Certificate';
 import { StartSetup, LightingPicker } from './components/StartSetup';
 import './setup.css';
+import { useTelegram } from './telegram';
 
 type Screen='start'|'studio'|'intro'|'play'|'term'|'workshop'|'fieldwork'|'pause'|'album'|'about'|'end'|'certificate';
 type Route='short'|'full';
@@ -34,6 +35,20 @@ export default function App(){
  const back=useRef<Screen>('start');
  const state=useRef({screen,phase,termIdx,sound});state.current={screen,phase,termIdx,sound};
  const totalTerms=route==='short'?1:3,totalParts=route==='short'?3:6;
+ const telegram=useTelegram({
+  backVisible:['studio','intro','play','pause','album','about','fieldwork','certificate'].includes(screen),
+  protectProgress:['intro','play','pause','term','workshop','fieldwork'].includes(screen)||(screen==='studio'&&studioBack.current==='pause')||(['about','album'].includes(screen)&&!['start','end'].includes(back.current)),
+  gestures:['play','workshop','fieldwork'].includes(screen),
+  onBack:()=>{
+   if(screen==='studio'||screen==='certificate')document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true}));
+   else if(screen==='play')setScreen('pause');
+   else if(screen==='pause'||screen==='fieldwork')setScreen('play');
+   else if(screen==='album'||screen==='about')setScreen(back.current);
+   else if(screen==='intro')setScreen('start');
+  },
+  onDeactivate:()=>{engine.current?.clearInput();if(engine.current)engine.current.paused=true;stopSoundscape();if(state.current.screen==='play')setScreen('pause')},
+  onFullscreenFailed:()=>setToast('Полный экран недоступен в этом окне. Игра продолжает работать.'),
+ });
  const onCollect=useCallback((c:Collectible,remaining:number)=>{
   chime(state.current.sound);setCount(n=>n+1);
   if(c.kind==='letter'&&remaining===0){engine.current!.paused=true;engine.current!.clearInput();setTermsDone(n=>n+1);setScreen('term')}
@@ -83,9 +98,9 @@ export default function App(){
  function toggleSound(){unlockSound();setSound(s=>!s);if(!sound)chime(true)}
  function openStudio(){studioBack.current=screen==='pause'?'pause':'start';setScreen('studio')}
  function finishField(){if(!field)return;engine.current!.completeFieldwork(field.id);setFieldNotes(notes=>notes.some(n=>n.id===field.id)?notes:[...notes,{...field,completed:true}]);setField(null);setScreen('play')}
- async function fullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{setToast('Полный экран недоступен в этом окне. Игра продолжает работать.')}}
+ async function fullscreen(){try{if(telegram){if(!telegram.isVersionAtLeast('8.0')){telegram.expand();setToast('Для полного экрана обновите Telegram. Игра продолжает работать.')}else if(telegram.isFullscreen)telegram.exitFullscreen();else telegram.requestFullscreen();return;}if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{setToast('Полный экран недоступен в этом окне. Игра продолжает работать.')}}
  const inWorld=!['start','studio','about','end','certificate'].includes(screen)||((screen==='about')&&back.current!=='start');
- return <div className="app">
+ return <div className="app" data-screen={screen}>
   <header className="topbar"><button className="brand" onClick={()=>{if(screen==='play')setScreen('pause');else if(screen==='start')return;}} aria-label="Архисбор"><Mark/><span>АРХИСБОР<small>ЖИВОЕ НАСЛЕДИЕ</small></span></button><span className="topbar-context">Интерактивная экспедиция <i/> Типография Сытина</span><div className="top-actions"><button className="icon-button" onClick={toggleSound} aria-label={sound?'Выключить звук':'Включить звук'} aria-pressed={sound}>{sound?'♫':'♪'}<span>{sound?'Звук вкл.':'Без звука'}</span></button><button className="icon-button" onClick={fullscreen} aria-label="Полный экран">⛶</button>{screen==='start'?<button className="text-button" onClick={()=>open('about')}>О проекте ↗</button>:screen==='play'?<button className="icon-button" onClick={()=>setScreen('pause')} aria-label="Пауза">Ⅱ</button>:null}</div></header>
   <div className={'world '+(!inWorld?'world-hidden':'')} ref={host}><canvas ref={canvas} aria-label="Игровая сцена. Стрелки влево и вправо — движение, пробел — прыжок, стрелка вниз — спуск."/></div>
   {screen==='start'&&<main className="welcome">
@@ -111,7 +126,7 @@ export default function App(){
    </div></div>
   </>}
   {toast&&<div className="toast" role="status">✓ {toast}</div>}
-  {screen==='intro'&&<Modal label="Начало этапа"><div className="intro-illustration">{phase===1?<><span>Р</span><span>Е</span><span>С</span><i>→</i></>:<Detail id="portal"/>}</div><span className="eyebrow">{phase===1?'01 / по Пятницкой':'02 / у фасада типографии'}</span><h2>{phase===1?'История начинается с буквы':'Время стать реставратором'}</h2><p>{phase===1?'Собирайте буквы по порядку. Впереди дворы, крыши, мосты и подземные галереи. У полевых станций можно остановиться и исследовать находку: нажмите E или кнопку на экране. Прыгайте через разрывы; после падения вы вернётесь на последнюю площадку с сохранёнными находками.':'Прыгайте по ярусам лесов к пронумерованным деталям. Соберите каждую по образцу и выберите бережный способ работы.'}</p><div className="intro-controls"><div><kbd>← →</kbd><span>Двигайтесь</span></div><div><kbd>Пробел</kbd><span>Удерживайте для высокого прыжка</span></div>{phase===2&&<div><kbd>↓</kbd><span>Спуститесь на ярус ниже</span></div>}</div><label className="check-setting"><input type="checkbox" checked={assist} onChange={e=>setAssist(e.target.checked)}/>Помогать с прыжками <small>герой помогает перепрыгивать разрывы и подниматься на площадки</small></label><button className="primary" onClick={()=>load(phase,termIdx)}>В путь <span>→</span></button><button className="text-button" onClick={()=>setScreen('start')}>На главную</button></Modal>}
+  {screen==='intro'&&<Modal label="Начало этапа"><div className="intro-illustration">{phase===1?<><span>Р</span><span>Е</span><span>С</span><i>→</i></>:<Detail id="portal"/>}</div><span className="eyebrow">{phase===1?'01 / по Пятницкой':'02 / у фасада типографии'}</span><h2>{phase===1?'История начинается с буквы':'Время стать реставратором'}</h2><p>{phase===1?'Собирайте буквы по порядку. Впереди дворы, крыши, мосты и подземные галереи. У полевых станций можно остановиться и исследовать находку: нажмите E или кнопку на экране. Прыгайте через разрывы; после падения вы вернётесь на последнюю площадку с сохранёнными находками.':'Прыгайте по ярусам лесов к пронумерованным деталям. Соберите каждую по образцу и выберите бережный способ работы.'}</p><div className="intro-controls"><div><kbd>← →</kbd><span>Двигайтесь</span></div><div><kbd><span className="desktop-key">Пробел</span><span className="touch-key">↑</span></kbd><span>Удерживайте для высокого прыжка</span></div>{phase===2&&<div><kbd>↓</kbd><span>Спуститесь на ярус ниже</span></div>}</div><label className="check-setting"><input type="checkbox" checked={assist} onChange={e=>setAssist(e.target.checked)}/>Помогать с прыжками <small>герой помогает перепрыгивать разрывы и подниматься на площадки</small></label><button className="primary" onClick={()=>load(phase,termIdx)}>В путь <span>→</span></button><button className="text-button" onClick={()=>setScreen('start')}>На главную</button></Modal>}
   {screen==='term'&&<Modal label="Слово собрано"><span className="round-seal">✓</span><span className="eyebrow">СЛОВО СОБРАНО / {TERMS[termIdx].tag}</span><h2 className="term-title">{TERMS[termIdx].word}</h2><h3>{TERMS[termIdx].short}</h3><p>{TERMS[termIdx].def}</p><div className="reference-note"><p>{TERMS[termIdx].example}</p></div><button className="primary" onClick={nextTerm}>{termIdx+1<totalTerms?'К следующему слову':'К типографии Сытина'} <span>→</span></button></Modal>}
   {screen==='workshop'&&current&&<Modal label={`Реставрация: ${current.name}`} wide><Workshop key={current.id} element={current} seed={seed} sound={sound} onDone={finishDetail}/></Modal>}
   {screen==='pause'&&<Modal label="Пауза"><span className="eyebrow">МОЖНО НЕ ТОРОПИТЬСЯ</span><h2>История подождёт</h2><p>Отдохните или настройте путешествие под себя.</p><div className="settings"><div className="lighting-setting"><span>Время суток</span><LightingPicker value={lighting} onChange={setLighting}/><small>В режиме «День → ночь» свет постепенно меняется по ходу экспедиции.</small></div><label><span>Помощь с прыжками</span><input type="checkbox" checked={assist} onChange={e=>setAssist(e.target.checked)}/></label><label><span>Музыка и звуки</span><input type="checkbox" checked={sound} onChange={toggleSound}/></label><button className="secondary" onClick={openStudio}>Изменить образ героя ↗</button></div><button className="primary" onClick={()=>setScreen('play')}>Продолжить <span>→</span></button><button className="secondary" onClick={()=>{engine.current?.recover();setScreen('play')}}>Вернуться на последнюю площадку</button><button className="secondary" onClick={regenerate}>Новая раскладка этого этапа</button><p className="small">Начнёт текущий этап заново. Маршрут № {seed}.</p><div className="dialog-links"><button className="text-button" onClick={()=>open('about')}>О здании и источниках ↗</button><button className="text-button" onClick={()=>setScreen('start')}>Завершить прогулку</button></div></Modal>}

@@ -17,3 +17,4 @@ Thumbs.db
 !/tests/fieldwork.ts
 !/tests/fieldwork-checks.mjs
 !/tests/character-motion.ts
+!/tests/telegram-checks.mjs
