@@ -1,0 +1,87 @@
+/* Заставка с живой мозаикой. Все правила ограничены .welcome.mosaic-mode,
+   чтобы не задеть остальные экраны игры. */
+.welcome.mosaic-mode{--strip-h:112px;background:#1b1b1b;min-height:max(660px,calc(var(--app-height,100dvh) - 96px));}
+.welcome.mosaic-mode::before{display:none;}
+.mosaic-stage{position:absolute;inset:0 0 var(--strip-h) 0;overflow:hidden;background:#1b1b1b;}
+.mosaic-stage canvas{display:block;width:100%;height:100%;touch-action:pan-y;}
+.mosaic-stage:not(.ready):not(.mosaic-failed)::after{content:'Раскладываем смальту…';position:absolute;right:6%;top:45%;color:#ffffff73;font:400 13px/1 var(--font-display);letter-spacing:.12em;text-transform:uppercase;}
+.mosaic-fallback{position:absolute;inset:0;background-size:cover;background-position:62% center;}
+.mosaic-shade{position:absolute;z-index:1;left:0;top:0;bottom:var(--strip-h);width:min(64%,820px);pointer-events:none;background:linear-gradient(90deg,#141414d9 0%,#14141499 48%,#14141400 100%);}
+
+.welcome.mosaic-mode .hero-copy{position:relative;z-index:2;flex:none;align-self:flex-start;width:min(480px,42%);margin:26px 0 30px 4.2%;padding:24px 28px 22px;background:#1f1f1fe0;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid #ffffff24;border-radius:24px;box-shadow:0 24px 70px #0000008c;}
+.welcome.mosaic-mode .hero-copy>.eyebrow{color:var(--c-lime);margin-top:18px;}
+.welcome.mosaic-mode .hero-copy>p{max-width:none;margin:0;color:#ffffffc2;font-size:14px;line-height:1.55;}
+.welcome.mosaic-mode .expedition-setup{max-width:none;margin-top:16px;}
+.welcome.mosaic-mode .route-picker{margin-top:14px;}
+.welcome.mosaic-mode .start-button{width:100%;}
+.welcome.mosaic-mode .hero-meta,.welcome.mosaic-mode .location-tag{display:none;}
+.welcome.mosaic-mode .journey-strip{position:relative;z-index:2;margin-top:auto;min-height:var(--strip-h);}
+
+.partners{display:flex;align-items:center;gap:16px;min-height:46px;}
+.partners>i{width:1px;align-self:stretch;background:#ffffff3d;}
+.partner-spbgasu{display:flex;align-items:center;gap:9px;}
+.partner-spbgasu img{display:block;height:48px;width:auto;}
+.partner-spbgasu>span{max-width:150px;color:#ffffffe0;font:500 10.5px/1.25 var(--font-text);}
+.partner-ab{display:flex;align-items:center;gap:8px;}
+.partner-ab img{display:block;width:auto;}
+.partner-ab img:first-child{height:36px;}
+.partner-ab img:last-child{height:39px;}
+
+.game-title{margin:16px 0 14px;line-height:1;letter-spacing:0;}
+.welcome.mosaic-mode .hero-copy .game-title{font-size:inherit;margin:14px 0 14px;}
+.game-title-kicker{display:block;margin:0 0 10px 2px;font:400 15px/1 var(--font-display);letter-spacing:.34em;color:var(--c-lime);text-transform:uppercase;}
+.title-tiles{display:flex;gap:9px;}
+.title-rest{gap:5px;margin-top:12px;}
+.title-tile{display:grid;place-items:center;flex:none;font-family:var(--font-display);font-weight:400;color:#262626;text-transform:uppercase;user-select:none;
+ box-shadow:inset 0 -4px 0 #0000002e,inset 0 2px 0 #ffffff6b,0 8px 18px #00000059;transform:rotate(var(--r,0deg));
+ animation:title-tile-in .75s cubic-bezier(.2,1.35,.4,1) backwards;animation-delay:calc(var(--i) * 65ms + 150ms);transition:transform .25s cubic-bezier(.2,1.5,.4,1),box-shadow .25s;}
+.title-tile:hover{transform:translateY(-6px) rotate(calc(var(--r,0deg) * -2));box-shadow:inset 0 -4px 0 #0000002e,inset 0 2px 0 #ffffff6b,0 14px 24px #00000066;}
+.title-pro .title-tile{width:78px;height:78px;border-radius:15px;font-size:38px;}
+.title-rest .title-tile{flex:1 1 0;min-width:0;max-width:36px;height:42px;border-radius:8px;font-size:18px;}
+.tile-blue{background:var(--c-blue);color:#fff;}
+.tile-orange{background:var(--c-orange);}
+.tile-lime{background:var(--c-lime);}
+.tile-white{background:#fbfaf6;}
+.title-pro .title-tile:nth-child(1){--r:-3deg;}
+.title-pro .title-tile:nth-child(2){--r:2deg;}
+.title-pro .title-tile:nth-child(3){--r:-1.5deg;}
+.title-rest .title-tile:nth-child(odd){--r:-1.4deg;}
+.title-rest .title-tile:nth-child(even){--r:1.1deg;}
+.title-rest .title-tile:last-child{--r:9deg;translate:0 -8px;}
+@keyframes title-tile-in{from{opacity:0;transform:translateY(-46px) rotate(-24deg) scale(1.3);}}
+
+.mosaic-hint{position:absolute;z-index:2;right:4.2%;bottom:calc(var(--strip-h) + 18px);display:flex;align-items:center;gap:12px;max-width:min(460px,50%);padding:10px 16px 10px 12px;border-radius:100px;background:#1b1b1bd1;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid #ffffff2b;color:#fff;font-size:12px;line-height:1.35;pointer-events:none;transition:background .4s;}
+.mosaic-hint b{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--c-orange);color:#262626;font:400 15px/1 var(--font-display);box-shadow:inset 0 -3px 0 #0000002e;}
+.mosaic-hint small{display:block;color:#ffffffa6;font-size:11px;}
+.mosaic-hint.done b{background:var(--c-lime);}
+.mosaic-hint .hint-touch{display:none;}
+@media (hover:none){.mosaic-hint .hint-mouse{display:none;}.mosaic-hint .hint-touch{display:inline;}}
+
+@media(prefers-reduced-motion:reduce){.title-tile{animation:none;transition:none;}}
+@media(min-width:1600px){.welcome.mosaic-mode .hero-copy{width:500px;margin-left:5%;margin-top:40px;}.title-pro .title-tile{width:86px;height:86px;font-size:42px;}.title-rest .title-tile{max-width:38px;height:44px;}}
+@media(max-width:1100px) and (min-width:761px){.welcome.mosaic-mode .hero-copy{width:min(430px,50%);padding:20px 22px 18px;}.title-pro .title-tile{width:66px;height:66px;font-size:32px;}.title-rest .title-tile{height:38px;font-size:16px;}.partner-spbgasu img{height:42px;}.partner-spbgasu>span{max-width:130px;font-size:9.5px;}.partner-ab img:first-child{height:30px;}.partner-ab img:last-child{height:33px;}.mosaic-hint{max-width:40%;}}
+@media(max-height:650px) and (min-width:761px){.welcome.mosaic-mode{--strip-h:75px;}.welcome.mosaic-mode .hero-copy{margin-top:14px;margin-bottom:14px;padding:16px 22px;}.welcome.mosaic-mode .hero-copy>p{display:none;}.title-pro .title-tile{width:56px;height:56px;font-size:28px;border-radius:12px;}.title-rest .title-tile{height:32px;font-size:14px;}.game-title-kicker{font-size:12px;margin-bottom:6px;}.welcome.mosaic-mode .open-studio{min-height:60px;}}
+@media(max-width:760px){
+ .welcome.mosaic-mode{display:flex;flex-direction:column;min-height:0;padding:0;background:#262626;}
+ .welcome.mosaic-mode .mosaic-stage{position:relative;inset:auto;order:0;flex:none;height:clamp(300px,54vh,470px);}
+ .mosaic-shade{display:none;}
+ .welcome.mosaic-mode .hero-copy{display:block;order:1;width:auto;margin:-58px 12px 22px;padding:20px 18px 16px;background:#262626;-webkit-backdrop-filter:none;backdrop-filter:none;}
+ .welcome.mosaic-mode .hero-copy>.eyebrow,.welcome.mosaic-mode .hero-copy>p,.welcome.mosaic-mode .game-title{margin-left:0;margin-right:0;}
+ .welcome.mosaic-mode .expedition-setup,.welcome.mosaic-mode .route-picker,.welcome.mosaic-mode .start-button,.welcome.mosaic-mode .direct{width:100%;margin-left:0;margin-right:0;}
+ .welcome.mosaic-mode .expedition-setup{margin-top:16px;margin-bottom:14px;}
+ .welcome.mosaic-mode .direct{margin-bottom:4px;}
+ .welcome.mosaic-mode .journey-strip{order:2;}
+ .partners{gap:12px;min-height:40px;}
+ .partner-spbgasu img{height:42px;}
+ .partner-spbgasu>span{max-width:128px;font-size:9.5px;}
+ .partner-ab img:first-child{height:30px;}
+ .partner-ab img:last-child{height:33px;}
+ .title-pro .title-tile{width:64px;height:64px;font-size:31px;border-radius:13px;}
+ .title-rest{gap:4px;}
+ .title-rest .title-tile{height:36px;font-size:15px;border-radius:7px;}
+ .mosaic-hint{top:12px;bottom:auto;left:12px;right:12px;margin:0 auto;width:max-content;max-width:calc(100% - 24px);padding:8px 12px 8px 8px;font-size:11px;}
+ .mosaic-hint b{width:26px;height:26px;font-size:13px;}
+ .mosaic-hint small{display:none;}
+}
+@media(max-height:650px) and (min-width:761px){.mosaic-hint small{display:none;}}
+@media(max-width:360px){.partner-spbgasu img{height:34px;}.partner-spbgasu>span{max-width:104px;font-size:8.5px;}.partner-ab img:first-child{height:26px;}.partner-ab img:last-child{height:28px;}.title-pro .title-tile{width:56px;height:56px;font-size:27px;}.title-rest .title-tile{height:32px;font-size:13px;}.welcome.mosaic-mode .hero-copy{margin-left:8px;margin-right:8px;padding:18px 14px 14px;}}

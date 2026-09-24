@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { buildCertificatePdf, certificateName, downloadCertificate, renderCertificate } from '../game/certificate';
 import { getTelegram } from '../telegram';
+import { track } from '../analytics';
 import './certificate.css';
 
 export type CertificateProps = { name: string; terms: number; details: number; onClose: () => void };
@@ -47,8 +48,8 @@ export function Certificate({ name, terms, details, onClose }: CertificateProps)
   async function save() {
     setBusy(true); setError('');
     try {
-      if (telegram && shareFile) await navigator.share({ files: [shareFile], title: 'Хранитель наследия' });
-      else if (!telegram) await downloadCertificate(name, terms, details);
+      if (telegram && shareFile) { await navigator.share({ files: [shareFile], title: 'Хранитель наследия' }); track('certificate_download', { via: 'share' }); }
+      else if (!telegram) { await downloadCertificate(name, terms, details); track('certificate_download', { via: 'pdf' }); }
     }
     catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setError('PDF не сохранился. Попробуй ещё раз или сфотографируй сертификат.'); }
     finally { setBusy(false); }

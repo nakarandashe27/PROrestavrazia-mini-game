@@ -1,4 +1,7 @@
 import { paintFacade } from './facade';
+import spbgasuEmblem from '../assets/logos/spbgasu-emblem.png';
+import abMark from '../assets/logos/artbrodsky-mark.png';
+import abWord from '../assets/logos/artbrodsky-students.png';
 
 /** One composition serves the on-screen souvenir and the downloadable PDF. */
 export const CERTIFICATE_WIDTH = 1680;
@@ -9,6 +12,15 @@ type C = CanvasRenderingContext2D;
 
 export function certificateName(name: string) {
   return name.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Друг наследия';
+}
+
+/** Логотипы соавторов. Встроены в сборку как data:-URL, поэтому холст не «загрязняется» и PDF работает офлайн. */
+let logos: Promise<HTMLImageElement[] | null> | undefined;
+function loadLogos() {
+  logos ||= Promise.all([spbgasuEmblem, abMark, abWord].map(src => new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src;
+  }))).catch(() => null);
+  return Promise.race([logos, new Promise<null>(resolve => setTimeout(() => resolve(null), 2500))]);
 }
 
 async function readyFonts() {
@@ -48,6 +60,7 @@ function nameLines(c: C, value: string) {
 
 export async function renderCertificate(canvas: HTMLCanvasElement, name: string, terms: number, details: number, scale = 1.5) {
   await readyFonts();
+  const partnerLogos = await loadLogos();
   canvas.width = Math.round(CERTIFICATE_WIDTH * scale);
   canvas.height = Math.round(CERTIFICATE_HEIGHT * scale);
   const c = canvas.getContext('2d');
@@ -59,7 +72,7 @@ export async function renderCertificate(canvas: HTMLCanvasElement, name: string,
   for (const [x, y, h, color] of [[92, 111, 24, '#F74C2E'], [113, 90, 45, '#F28D05'], [134, 69, 66, '#D0E97E']] as const) {
     c.fillStyle = color; c.fillRect(x, y, 24, h);
   }
-  c.textAlign = 'left'; label(c, 'АРХИСБОР', 183, 120, 38, '#ffffff', display);
+  c.textAlign = 'left'; label(c, 'ИГРА ПРО РЕСТАВРАЦИЮ', 183, 118, 30, '#ffffff', display);
   c.textAlign = 'right'; label(c, 'ПАМЯТНЫЙ СЕРТИФИКАТ', 1586, 104, 21, '#D0E97E');
   label(c, 'Типография И. Д. Сытина · Москва', 1586, 134, 21, '#bdbdbd');
   c.textAlign = 'center';
@@ -80,6 +93,18 @@ export async function renderCertificate(canvas: HTMLCanvasElement, name: string,
   c.restore();
   c.fillStyle = '#D0E97E'; c.fillRect(140, 1077, 1400, 3);
   label(c, 'ИССЛЕДОВАТЬ. СОХРАНИТЬ. ПРОДОЛЖИТЬ ИСТОРИЮ.', 840, 1118, 20, '#D0E97E');
+  // Соавторы: СПбГАСУ слева, АРТ.БРОДСКИЙ справа.
+  if (partnerLogos) {
+    const [emblem, mark, word] = partnerLogos;
+    c.drawImage(emblem, 140, 1090, 29, 45);
+    c.textAlign = 'left';
+    label(c, 'Санкт-Петербургский государственный', 180, 1105, 13, '#ffffffd9');
+    label(c, 'архитектурно-строительный университет', 180, 1124, 13, '#ffffffd9');
+    const wh = 40, ww = word.width / word.height * wh;
+    c.drawImage(word, 1540 - ww, 1093, ww, wh);
+    c.drawImage(mark, 1540 - ww - 44, 1095, 36, 36);
+    c.textAlign = 'center';
+  }
 }
 
 function utf16Hex(value: string) {
@@ -106,7 +131,7 @@ export function certificatePdf(jpeg: Uint8Array, width: number, height: number, 
   offsets[5] = byteLength;
   append(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
   append(jpeg); append('\nendstream\nendobj\n');
-  object(6, `<< /Title <${utf16Hex(`Хранитель наследия — ${certificateName(name)}`)}> /Author <${utf16Hex('Архисбор')}> /Subject <${utf16Hex('Памятный сертификат за исследование типографии И. Д. Сытина')}> >>`);
+  object(6, `<< /Title <${utf16Hex(`Хранитель наследия — ${certificateName(name)}`)}> /Author <${utf16Hex('Игра «ПРО РЕСТАВРАЦИЮ» · СПбГАСУ и АРТ.БРОДСКИЙ')}> /Subject <${utf16Hex('Памятный сертификат за исследование типографии И. Д. Сытина')}> >>`);
   const xref = byteLength;
   append('xref\n0 7\n0000000000 65535 f \n');
   for (let i = 1; i <= 6; i++) append(`${String(offsets[i]).padStart(10, '0')} 00000 n \n`);

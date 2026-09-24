@@ -54,7 +54,7 @@ button:focus-visible,a:focus-visible,input:focus-visible { outline-color: var(--
 .topbar { background: var(--c-dark); color: white; border-bottom-color: #ffffff1a; }
 .brand { gap: 14px; }
 .brand svg { width: 32px; height: 38px; }
-.brand span { font-family: var(--font-display); font-weight: 400; font-size: 25px; letter-spacing: 0; line-height: .95; }
+.brand span { font-family: var(--font-display); font-weight: 400; font-size: 18px; letter-spacing: .01em; line-height: 1; white-space: nowrap; }
 .brand small { display: block; font-family: var(--font-text); font-size: 8px; letter-spacing: 2px; margin-top: 8px; color: #ffffffa3; }
 .topbar-context { color: #ffffffa3; }
 .topbar-context i { background: var(--c-lime); }
@@ -191,8 +191,8 @@ input[type=checkbox] { accent-color: var(--c-blue); }
   .modal h3 { font-size: 24px; }
 }
 @media(max-width:760px) {
-  .brand span { font-size: 22px; }
-  .brand small { font-size: 7px; letter-spacing: 1.4px; }
+  .brand span { font-size: 12px; }
+  .brand small { font-size: 7px; letter-spacing: 1.4px; margin-top: 6px; }
   .brand { gap: 10px; }
   .top-actions { gap: 7px; }
   .icon-button { padding: 0 6px; }
@@ -259,7 +259,7 @@ input[type=checkbox] { accent-color: var(--c-blue); }
 @media(max-width:360px) {
   .topbar { padding: 0 14px; }
   .brand svg { width: 24px; height: 30px; }
-  .brand span { font-size: 18px; }
+  .brand span { font-size: 10px; }
   .brand small { display: none; }
   .top-actions { gap: 4px; }
   .icon-button { min-width: 30px; padding: 0; font-size: 22px; }

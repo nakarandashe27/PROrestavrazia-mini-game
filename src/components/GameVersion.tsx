@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { version } from '../../package.json';
+import { useTodayStarts } from './StandStats';
 
-export function GameVersion(){
+export function GameVersion({onStats}:{onStats?:()=>void}){
  const [latest,setLatest]=useState(version);
+ const today=useTodayStarts();
  useEffect(()=>{
   if(location.protocol==='file:'||import.meta.env.DEV)return;
   let active=true;
@@ -19,5 +21,5 @@ export function GameVersion(){
  const update=()=>{
   const url=new URL(location.href);url.searchParams.set('v',latest);url.searchParams.set('refresh',String(Date.now()));location.replace(url.href);
  };
- return <div className="game-version"><span>Версия {version}</span>{location.protocol!=='file:'&&<button onClick={update}>{latest!==version?'Доступно обновление — обновить игру':'Обновить игру'}</button>}</div>;
+ return <div className="game-version"><span>Версия {version}</span>{onStats&&<button onClick={onStats} aria-label={`Статистика стенда: сегодня запусков ${today}`}>Сегодня запусков: {today}</button>}{location.protocol!=='file:'&&<button onClick={update}>{latest!==version?'Доступно обновление — обновить игру':'Обновить игру'}</button>}</div>;
 }

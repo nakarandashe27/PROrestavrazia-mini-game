@@ -74,7 +74,7 @@ export function CharacterStudio({name,onName,avatar,onAvatar,onClose}:CharacterS
   const update=(key:keyof Avatar,value:string)=>onAvatar({...avatar,[key]:value});
   return createPortal(<section className="character-studio" ref={rootRef} role="dialog" aria-modal="true" aria-labelledby={id+'-title'} tabIndex={-1}>
     <div className="studio-shell">
-      <header className="studio-header"><div><p>Архисбор / Перед путешествием</p><h1 id={id+'-title'}>Ваш реставратор</h1></div>
+      <header className="studio-header"><div><p>Игра про реставрацию / Перед путешествием</p><h1 id={id+'-title'}>Ваш реставратор</h1></div>
         <button className="studio-close" type="button" onClick={onClose} aria-label="Закрыть редактор персонажа">×</button>
       </header>
       <div className="studio-name"><label htmlFor={id+'-name'}>Ваше имя</label>
