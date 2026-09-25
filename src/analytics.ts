@@ -17,8 +17,8 @@
  * Имя игрока, образ и результаты никуда не отправляются.
  */
 
-/** Номер счётчика из metrika.yandex.ru (например, 104123456). 0 — Метрика выключена. */
-export const METRIKA_ID: number = 0;
+/** Номер счётчика из metrika.yandex.ru. 0 — Метрика выключена. */
+export const METRIKA_ID: number = 113029557;
 
 export type Goal = 'game_start' | 'game_finish' | 'certificate_open' | 'certificate_download';
 export const GOALS: { id: Goal; label: string }[] = [
@@ -47,16 +47,17 @@ export function initAnalytics(mode: 'web' | 'telegram') {
  started = true;
  try {
   const w = window;
-  w.ym = w.ym || (function (...args: unknown[]) { (w.ym!.a = w.ym!.a || []).push(args); } as Ym);
+  // Очередь как в официальном коде счётчика: вызовы копятся, пока tag.js не загрузится.
+  w.ym = w.ym || (function () { (w.ym!.a = w.ym!.a || []).push(arguments); } as unknown as Ym);
   w.ym.l = Date.now();
-  const src = 'https://mc.yandex.ru/metrika/tag.js';
+  const src = `https://mc.yandex.ru/metrika/tag.js?id=${METRIKA_ID}`;
   if (![...document.scripts].some(s => s.src === src)) {
    const script = document.createElement('script');
    script.async = true; script.src = src;
    script.onerror = () => { /* Нет сети — локальный журнал продолжает считать. */ };
    document.head.append(script);
   }
-  w.ym(METRIKA_ID, 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: false, params: { mode } });
+  w.ym(METRIKA_ID, 'init', { ssr: true, clickmap: true, trackLinks: true, accurateTrackBounce: true, referrer: document.referrer, url: location.href, params: { mode } });
  } catch { /* Счётчик никогда не мешает игре. */ }
 }
 
