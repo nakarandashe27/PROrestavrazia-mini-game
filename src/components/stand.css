@@ -14,3 +14,11 @@
 .about-partners{margin-top:20px;padding:16px 18px;background:#262626;border-radius:16px;}
 .about-partners .eyebrow{color:var(--c-lime);margin-bottom:10px;}
 @media(max-width:760px){.stats-table{font-size:12px;min-width:440px}.stats-table th,.stats-table td{padding:9px 10px}}
+/* Логотипы в «О проекте» не должны подхватывать правило фотографии .about-grid img. */
+.about-partners .partners{flex-wrap:wrap;row-gap:12px;}
+.about-partners .partners img{width:auto;max-width:none;object-fit:contain;object-position:left center;}
+.about-partners .partner-spbgasu img{height:48px;}
+.about-partners .partner-ab img:first-child{height:36px;}
+.about-partners .partner-ab img:last-child{height:39px;}
+.about-partners .partner-spbgasu>span{max-width:160px;}
+@media(max-width:760px){.about-partners .partners{flex-direction:column;align-items:flex-start;}.about-partners .partners>i{display:none;}.about-partners .partner-spbgasu img{height:42px;}.about-partners .partner-ab img:first-child{height:30px;}.about-partners .partner-ab img:last-child{height:33px;}}
